@@ -1,26 +1,30 @@
 package net.mestizoftware.web.controller;
 
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import net.mestizoftware.application.service.CalculatorService;
+import net.mestizoftware.application.service.OperationService;
+import net.mestizoftware.domain.model.Operation;
 import net.mestizoftware.domain.model.OperationType;
 import net.mestizoftware.domain.model.User;
+import net.mestizoftware.web.dto.CreateOperationDto;
 import net.mestizoftware.web.dto.OperationRequestDto;
 import net.mestizoftware.web.dto.OperationResponseDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Map;
-
 @RestController
 @RequestMapping("/api/v1/operations")
+@RequiredArgsConstructor
 public class OperationController {
 
     private final CalculatorService calculatorService;
+    private final OperationService operationService;
 
-    public OperationController(CalculatorService calculatorService) {
-        this.calculatorService = calculatorService;
+    @PostMapping("/create")
+    public ResponseEntity<Operation> createOperation(@RequestBody CreateOperationDto dto) {
+        Operation created = operationService.createOperation(dto);
+        return ResponseEntity.ok(created);
     }
 
     @PostMapping("/{type}")

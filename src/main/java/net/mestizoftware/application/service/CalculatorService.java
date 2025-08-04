@@ -31,14 +31,15 @@ public class CalculatorService {
         user.setBalance(user.getBalance() - operation.getCost());
         userService.update(user);
 
-        Record record = new Record();
-        record.setUser(user);
-        record.setOperation(operation);
-        record.setAmount(input);
-        record.setUserBalance(user.getBalance());
-        record.setOperationResponse(String.valueOf(result));
-        record.setCreatedAt(LocalDateTime.now());
-        record.setDeleted(false);
+        Record record = Record.builder()
+                .user(user)
+                .operation(operation)
+                .amount(input)
+                .userBalance(user.getBalance())
+                .operationResponse(String.valueOf(result))
+                .createdAt(LocalDateTime.now())
+                .deleted(false)
+                .build();
         recordRepository.save(record);
 
         return String.valueOf(result);

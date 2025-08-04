@@ -24,11 +24,12 @@ public class AuthService {
     }
 
     public User register(String username, String rawPassword) {
-        User user = new User();
-        user.setUsername(username);
-        user.setPassword(passwordEncoder.encode(rawPassword));
-        user.setStatus("active");
-        user.setBalance(100.0); // Default starting balance
+        User user = User.builder()
+                .username(username)
+                .password(passwordEncoder.encode(rawPassword))
+                .status("active")
+                .balance(100.0) // Default starting balance
+                .build();
         return userRepository.save(user);
     }
 
