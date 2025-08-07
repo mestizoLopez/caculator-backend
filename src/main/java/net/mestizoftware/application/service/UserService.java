@@ -3,6 +3,7 @@ package net.mestizoftware.application.service;
 import lombok.RequiredArgsConstructor;
 import net.mestizoftware.domain.model.User;
 import net.mestizoftware.domain.repository.UserRepository;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -13,7 +14,7 @@ public class UserService {
 
     public User getByUsername(String username) {
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }
 
     public void update(User user) {

@@ -1,6 +1,7 @@
 package net.mestizoftware.application.service;
 
 import lombok.RequiredArgsConstructor;
+import net.mestizoftware.domain.exception.InsufficientBalanceException;
 import net.mestizoftware.domain.model.Operation;
 import net.mestizoftware.domain.model.OperationType;
 import net.mestizoftware.domain.model.Record;
@@ -21,14 +22,16 @@ public class CalculatorService {
 
     public String performOperation(OperationType type, double input, User user) {
         Operation operation = operationRepository.findByType(type)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid operation"));
+                .orElseThrow(() -> new IllegalArgumentException("Operation type not found"));
 
-        if (user.getBalance() < operation.getCost()) {
-            throw new IllegalStateException("Insufficient balance");
+        double  balance = user.getBalance();
+
+        if (balance < operation.getCost()) {
+            throw new InsufficientBalanceException("Insufficient balance");
         }
 
-        double result = calculate(type, input);
-        user.setBalance(user.getBalance() - operation.getCost());
+        double result = calculate(type, balance, input);
+        user.setBalance(result - operation.getCost());
         userService.update(user);
 
         Record record = Record.builder()
@@ -45,14 +48,19 @@ public class CalculatorService {
         return String.valueOf(result);
     }
 
-    private double calculate(OperationType type, double input) {
+    private double calculate(OperationType type, double balance, double input) {
         return switch (type) {
-            case ADDITION -> input + input;
-            case SUBTRACTION -> input - input;
-            case MULTIPLICATION -> input * input;
-            case DIVISION -> input / (input == 0 ? 1 : input); // avoid division by zero
+            case ADDITION -> balance + input;
+            case SUBTRACTION -> balance - input;
+            case MULTIPLICATION -> balance * input;
+            case DIVISION ->  {
+                if(input == 0) {
+                    throw new IllegalArgumentException("Input must be greater than zero");
+                }
+                yield  balance / input;
+            }
             case SQUARE_ROOT -> Math.sqrt(input);
-            default -> throw new UnsupportedOperationException("Use external API for random string");
+            default -> throw new UnsupportedOperationException("Invalid operation");
         };
     }
 
