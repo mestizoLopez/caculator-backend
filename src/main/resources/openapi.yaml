@@ -1,0 +1,217 @@
+openapi: 3.0.3
+info:
+  title: Calculator API
+  version: "1.0.0"
+  description: Secure calculator API with per-operation costs, balance deduction, and user records.
+servers:
+  - url: http://localhost:8080
+    description: Local
+  - url: http://13.221.34.118:8080
+    description: Production
+tags:
+  - name: Auth
+  - name: Operations
+  - name: Records
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserSummary' }
+        "409": { description: User already exists }
+  /api/v1/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and receive JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AuthRequest' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        "401": { description: Invalid credentials }
+  /api/v1/operations:
+    get:
+      tags: [Operations]
+      summary: List available operations
+      security: [ { bearerAuth: [] } ]
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/OperationDto' }
+    post:
+      tags: [Operations]
+      summary: Create/Update operation and cost
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OperationCreateRequest' }
+      responses:
+        "201": { description: Created }
+        "400": { description: Validation error }
+        "401": { description: Unauthorized }
+  /api/v1/operations/perform:
+    post:
+      tags: [Operations]
+      summary: Perform an operation and charge the user
+      description: Deducts the per-operation cost from the user's balance and records the result.
+      security: [ { bearerAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OperationRequest' }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OperationResult' }
+        "402": { description: Payment required / insufficient balance }
+        "400": { description: Invalid input }
+        "401": { description: Unauthorized }
+  /api/v1/records:
+    get:
+      tags: [Records]
+      summary: Get current user's records (paginated)
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: query
+          name: page
+          schema: { type: integer, minimum: 0, default: 0 }
+        - in: query
+          name: size
+          schema: { type: integer, minimum: 1, maximum: 100, default: 10 }
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PageRecordDto' }
+        "401": { description: Unauthorized }
+  /api/v1/records/{id}:
+    delete:
+      tags: [Records]
+      summary: Soft delete a record
+      security: [ { bearerAuth: [] } ]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        "200": { description: Deleted (soft) }
+        "403": { description: Not owner of the record }
+        "404": { description: Not found }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuthRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+    RegisterRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string, format: email }
+        password: { type: string, minLength: 6 }
+    AuthResponse:
+      type: object
+      properties:
+        token: { type: string }
+    UserSummary:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string, format: email }
+        status: { type: string, enum: [ACTIVE, INACTIVE] }
+        balance: { type: number, format: double }
+    OperationDto:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        type: { $ref: '#/components/schemas/OperationType' }
+        cost: { type: number, format: double }
+    OperationCreateRequest:
+      type: object
+      required: [type, cost]
+      properties:
+        type: { $ref: '#/components/schemas/OperationType' }
+        cost: { type: number, format: double, minimum: 0 }
+    OperationRequest:
+      type: object
+      required: [type]
+      properties:
+        type: { $ref: '#/components/schemas/OperationType' }
+        input:
+          oneOf:
+            - type: number
+            - type: string
+          description: Numeric input for math ops; ignored for RANDOM_STRING.
+    OperationResult:
+      type: object
+      properties:
+        result:
+          oneOf:
+            - type: number
+            - type: string
+        userBalance: { type: number, format: double }
+        recordId: { type: integer, format: int64 }
+    RecordDto:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        username: { type: string, format: email }
+        operation: { $ref: '#/components/schemas/OperationType' }
+        amount: { type: number, format: double }
+        userBalance: { type: number, format: double }
+        operationResponse: { type: string }
+        createdAt: { type: string, format: date-time }
+    PageRecordDto:
+      type: object
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/RecordDto' }
+        totalElements: { type: integer, format: int64 }
+        totalPages: { type: integer }
+        size: { type: integer }
+        number: { type: integer }
+    OperationType:
+      type: string
+      enum: [ADDITION, SUBTRACTION, MULTIPLICATION, DIVISION, SQUARE_ROOT, RANDOM_STRING]
