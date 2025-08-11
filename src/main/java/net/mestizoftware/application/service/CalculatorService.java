@@ -45,7 +45,7 @@ public class CalculatorService {
                 .build();
         recordRepository.save(record);
 
-        return String.valueOf(result);
+        return String.valueOf(user.getBalance());
     }
 
     private double calculate(OperationType type, double balance, double input) {
